@@ -1,11 +1,12 @@
-# InsightX - Conversational Analytics Engine
+# Shinchan AI - Conversational Analytics Engine
 
-> A production-grade conversational AI system that translates natural language queries into data-backed business insights for digital payment transaction data.
+> A conversational AI system that translates natural language queries into data-backed business insights for digital payment transaction data. Built with React + FastAPI.
 
 ![Python 3.10+](https://img.shields.io/badge/Python-3.10+-blue)
-![Streamlit](https://img.shields.io/badge/UI-Streamlit-red)
+![React 18](https://img.shields.io/badge/Frontend-React%2018-61DAFB)
+![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688)
 ![DuckDB](https://img.shields.io/badge/DB-DuckDB-yellow)
-![Groq](https://img.shields.io/badge/LLM-Llama%203.1%2070B-green)
+![Groq](https://img.shields.io/badge/LLM-Llama%203.3%2070B-green)
 
 ---
 
@@ -20,30 +21,20 @@ Signal Extraction → Hypothesis Scoring → Insight Generation → Natural Lang
 
 ```mermaid
 graph LR
-    A[User Query] --> B[SQLTranslator]
-    B -->|SQL| C[SQLExecutor]
-    C -->|DataFrame| D[InsightEngine]
-    D -->|Signals| E[Hypothesis Scorer]
-    E -->|Top Hypotheses| F[Insight Generator]
-    F --> G[Natural Language Response]
+    A[React Frontend] -->|HTTP| B[FastAPI Backend]
+    B --> C[SQLTranslator]
+    C -->|SQL| D[SQLExecutor]
+    D -->|DataFrame| E[InsightEngine]
+    E -->|Signals| F[Hypothesis Scorer]
+    F -->|Top Hypotheses| G[Insight Generator]
+    G --> H[JSON Response]
 
     subgraph "Data Layer"
-        H[DataManager / DuckDB]
+        I[DataManager / DuckDB]
     end
-    C -.-> H
-    B -.-> H
+    D -.-> I
+    C -.-> I
 ```
-
-### Module Overview
-
-| Module | Class | Responsibility |
-|--------|-------|----------------|
-| `data_manager.py` | `DataManager` | DuckDB initialization, schema management, query validation |
-| `translator.py` | `SQLTranslator` | NL → SQL conversion via Llama 3.1 70B |
-| `executor.py` | `SQLExecutor` | SQL execution, result caching, performance tracking |
-| `analytics.py` | `InsightEngine` | Signal extraction, hypothesis scoring, insight generation |
-| `main.py` | `InsightXEngine` | Pipeline orchestration (zero business logic) |
-| `frontend.py` | — | Streamlit UI with Apple-inspired design |
 
 ---
 
@@ -52,14 +43,13 @@ graph LR
 ### 1. Prerequisites
 
 - Python 3.10+
+- Node.js 18+
 - [Groq API Key](https://console.groq.com/) (free tier available)
 
-### 2. Installation
+### 2. Backend Setup
 
 ```bash
-# Clone the repository
-git clone <repo-url>
-cd shinchan.ai
+cd shinchan.ai.v2/backend
 
 # Create virtual environment
 python -m venv venv
@@ -68,17 +58,25 @@ source venv/bin/activate  # macOS/Linux
 
 # Install dependencies
 pip install -r requirements.txt
+
+# Set up environment variables
+cp .env.example .env
+# Edit .env and add your GROQ_API_KEY
 ```
 
-### 3. Set API Key
+### 3. Frontend Setup
 
 ```bash
-export GROQ_API_KEY="your-groq-api-key-here"
+cd shinchan.ai.v2/frontend
+
+# Install dependencies
+npm install
 ```
 
-### 4. Generate Dataset (if you don't have one)
+### 4. Generate Dataset (if needed)
 
 ```bash
+# From the project root
 python generate_dataset.py
 ```
 
@@ -86,15 +84,153 @@ This creates `250k_transactions.csv` with 250,000 realistic synthetic transactio
 
 ### 5. Run the Application
 
-**Streamlit UI (recommended):**
+**Start the backend (Terminal 1):**
 ```bash
-streamlit run frontend.py
+cd shinchan.ai.v2/backend
+python run.py
+```
+Backend runs at `http://localhost:8000` — API docs at `http://localhost:8000/docs`
+
+**Start the frontend (Terminal 2):**
+```bash
+cd shinchan.ai.v2/frontend
+npm run dev
+```
+Frontend runs at `http://localhost:5173` — API calls are proxied to the backend.
+
+---
+
+## Project Structure
+
+```
+shinchan.ai/
+├── shinchan.ai.v2/
+│   ├── backend/
+│   │   ├── run.py                          # Server entry point (uvicorn)
+│   │   ├── requirements.txt                # Python dependencies
+│   │   ├── .env                            # Environment variables
+│   │   ├── .env.example                    # Env template
+│   │   ├── data/
+│   │   │   ├── 250k_transactions.csv       # Dataset
+│   │   │   └── hypotheses.json             # Business hypothesis library
+│   │   └── app/
+│   │       ├── main.py                     # FastAPI app instance
+│   │       ├── core/
+│   │       │   └── config.py               # Settings (Pydantic)
+│   │       ├── api/
+│   │       │   ├── deps.py                 # Dependency injection
+│   │       │   └── routes/
+│   │       │       ├── chat.py             # /api/chat/* endpoints
+│   │       │       └── system.py           # /api/system/* endpoints
+│   │       ├── models/
+│   │       │   ├── request.py              # Request schemas
+│   │       │   └── response.py             # Response schemas
+│   │       └── services/
+│   │           ├── engine.py               # Pipeline orchestrator
+│   │           ├── translator.py           # NL → SQL (Groq/Llama 3.3)
+│   │           ├── executor.py             # SQL execution engine
+│   │           ├── analytics.py            # Signal extraction & insights
+│   │           └── data_manager.py         # DuckDB management
+│   │
+│   └── frontend/
+│       ├── package.json                    # Node dependencies
+│       ├── vite.config.ts                  # Vite config (dev proxy)
+│       ├── tailwind.config.js              # Tailwind CSS config
+│       ├── tsconfig.json                   # TypeScript config
+│       └── src/
+│           ├── main.tsx                    # React entry point
+│           ├── App.tsx                     # Root component
+│           ├── index.css                   # Global styles + scrollbar
+│           ├── components/
+│           │   ├── chat-demo.tsx           # Main chat page (conversations)
+│           │   └── ui/
+│           │       ├── ai-prompt-box.tsx    # Input box with toolbar
+│           │       ├── chat-message.tsx     # Message bubble component
+│           │       ├── chat-container.tsx   # Message list + empty state
+│           │       ├── conversation-sidebar.tsx  # Conversation history sidebar
+│           │       └── sidebar-toggle.tsx   # Menu hamburger button
+│           ├── services/
+│           │   └── api.ts                  # API client (fetch)
+│           ├── types/
+│           │   └── index.ts                # TypeScript interfaces
+│           └── lib/
+│               └── utils.ts                # cn() helper (clsx + twMerge)
+│
+├── generate_dataset.py                     # Synthetic data generator
+├── hypotheses.json                         # Hypothesis library (root copy)
+└── README.md                               # This file
 ```
 
-**CLI mode:**
-```bash
-python main.py
+---
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/chat/query` | Process a natural language query |
+| `POST` | `/api/chat/clear` | Clear conversation history |
+| `GET`  | `/api/system/stats` | Database & system statistics |
+| `GET`  | `/api/system/health` | Health check |
+
+### Query Request
+
+```json
+{
+  "query": "What is the failure rate for bill payments?",
+  "conversation_id": "1234567890"
+}
 ```
+
+### Query Response
+
+```json
+{
+  "query": "...",
+  "insight": "...",
+  "sql": "SELECT ...",
+  "execution_time_ms": 42.5,
+  "rows_returned": 10,
+  "data": [...],
+  "signals": ["HIGH_FAILURE_RATE"],
+  "hypotheses": [...],
+  "error": null
+}
+```
+
+---
+
+## Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `GROQ_API_KEY` | Groq API key (required) | — |
+| `GROQ_MODEL` | LLM model name | `llama-3.3-70b-versatile` |
+| `DATA_PATH` | Path to transaction CSV | `./data/250k_transactions.csv` |
+| `HYPOTHESIS_PATH` | Path to hypotheses JSON | `./data/hypotheses.json` |
+
+---
+
+## Features
+
+### Chat Interface
+- Multi-conversation support with sidebar history
+- Auto-generated conversation titles from first message
+- LocalStorage persistence across sessions
+- Create, switch, and delete conversations
+- Smooth animations (framer-motion)
+
+### Analytics Engine
+- Natural language → SQL translation via Llama 3.3 70B
+- DuckDB in-memory query execution (<500ms)
+- Signal extraction from query results
+- Hypothesis-driven pattern matching
+- AI-generated natural language insights
+
+### Design
+- Dark theme (`#1F2023` containers, `#4a4a4c` borders)
+- B&W icon system (inline SVGs, no icon library)
+- Separated conversation shell + narrower input box
+- Custom scrollbar styling
 
 ---
 
@@ -115,111 +251,32 @@ python main.py
 | `receiver_bank` | VARCHAR | Bank name |
 | `device_type` | VARCHAR | Android, iOS, Web |
 | `network_type` | VARCHAR | 3G, 4G, 5G, WiFi |
-| `fraud_flag` | INTEGER | 0 = Not flagged; 1 = Flagged for review (NOT confirmed fraud) |
+| `fraud_flag` | INTEGER | 0 = Not flagged; 1 = Flagged for review |
 | `hour_of_day` | INTEGER | 0-23 |
 | `day_of_week` | VARCHAR | Monday-Sunday |
 | `is_weekend` | INTEGER | 0 or 1 |
-
-### Important Data Notes
-
-- **`fraud_flag = 1`** means "flagged for manual review", **NOT confirmed fraud**
-- **`merchant_category` is NULL** for all P2P transactions (intentional)
-- **`receiver_age_group` is NULL** for all non-P2P transactions (intentional)
 
 ---
 
 ## Sample Queries
 
-### Descriptive
 - "What is the average transaction amount for bill payments?"
-- "How many P2P transfers were made on weekends?"
-- "What's the overall success rate?"
-
-### Comparative
-- "How do failure rates compare between Android and iOS users?"
-- "Which age group uses P2P most frequently?"
-- "Compare transaction volumes between SBI and HDFC"
-
-### Temporal
+- "How do failure rates compare between Android and iOS?"
 - "What are the peak transaction hours for food delivery?"
-- "Show me weekend vs weekday failure rates"
-- "When do bill payment failures spike?"
-
-### Correlation
-- "Is there a relationship between network type and transaction success?"
-- "Do 3G users have higher failure rates than WiFi users?"
-- "Which merchant categories fail most on mobile networks?"
-
-### Risk Analysis
-- "What percentage of high-value transactions are flagged for review?"
 - "Which banks have the highest fraud flag rates?"
-- "Are there patterns in flagged transactions by age group?"
-
-### Complex Multi-Dimensional
 - "Which sender banks have the highest failure rates for bill payments over ₹1,000 during weekends?"
-- "Compare P2P transaction patterns between 18-25 and 56+ age groups on iOS vs Android"
-
----
-
-## Hypothesis Library
-
-The system uses a pre-defined hypothesis library (`hypotheses.json`) to explain observed data patterns:
-
-| ID | Hypothesis | Key Signals |
-|----|-----------|------------|
-| H1 | Third-party system dependency | EXTERNAL_DEPENDENCY, HIGH_FAILURE_RATE |
-| H2 | Validation & input complexity | HEAVY_VALIDATION, HIGH_RETRIES |
-| H3 | Peak-hour load sensitivity | PEAK_SENSITIVE |
-| H4 | Scheduled maintenance windows | MAINTENANCE_WINDOW_PATTERN |
-| H5 | Network connectivity issues | NETWORK_FRAGILITY |
-| H6 | Device-platform specific failures | DEVICE_SENSITIVITY |
-| H7 | High-value transaction risk | HIGH_VALUE_RISK |
-| H8 | Bank-specific processing issues | BANK_CONCENTRATION |
-
-**Scoring Formula:**
-```
-score = 0.7 × (required_signals_matched / total_required) + 
-        0.3 × (supporting_signals_matched / total_supporting)
-```
-
----
-
-## Design Principles
-
-1. **Deterministic Data Layer**: All numerical computations in SQL/DuckDB, never by LLMs
-2. **Hypothesis-Driven Analysis**: Matches patterns to pre-defined scenarios only
-3. **Separation of Concerns**: Clear module boundaries with defined contracts
-4. **Speed-First**: <500ms target for most queries
-5. **Explainability-First**: Every insight traceable to data evidence
-
----
-
-## Project Structure
-
-```
-/project_root
-├── main.py                    # Orchestrator (zero business logic)
-├── frontend.py               # Streamlit UI
-├── data_manager.py           # DuckDB management
-├── translator.py             # NL → SQL (Groq/Llama 3.1)
-├── executor.py               # SQL execution engine
-├── analytics.py              # Signal extraction & hypothesis scoring
-├── hypotheses.json           # Business hypothesis library
-├── generate_dataset.py       # Synthetic data generator
-├── requirements.txt          # Dependencies
-├── 250k_transactions.csv     # Dataset (generated)
-└── README.md                 # This file
-```
 
 ---
 
 ## Tech Stack
 
-- **Database**: DuckDB (in-memory SQL engine)
-- **LLM**: Llama 3.1 70B via Groq API
-- **Frontend**: Streamlit
-- **Data**: Pandas + NumPy
-- **Logging**: Loguru
+| Layer | Technology |
+|-------|------------|
+| **Frontend** | React 18, TypeScript, Tailwind CSS, Vite, Framer Motion |
+| **Backend** | FastAPI, Pydantic, Uvicorn |
+| **Database** | DuckDB (in-memory) |
+| **LLM** | Llama 3.3 70B via Groq API |
+| **Data** | Pandas, NumPy |
 
 ---
 
