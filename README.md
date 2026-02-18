@@ -1,4 +1,4 @@
-# Shinchan AI - Conversational Analytics Engine
+# PayFlow AI - Conversational Analytics Engine
 
 > A conversational AI system that translates natural language queries into data-backed business insights for digital payment transaction data. Built with React + FastAPI.
 
@@ -13,27 +13,42 @@
 ## Architecture
 
 ```
-User Query → NL Understanding → SQL Generation → Query Execution →
-Signal Extraction → Hypothesis Scoring → Insight Generation → Natural Language Response
+User Query → Query Router → [Data Pipeline | General Conversation]
+
+Data Pipeline:    NL Understanding → SQL Generation → Query Execution →
+                  Signal Extraction → Hypothesis Scoring → Insight Generation
+
+General Pipeline: Direct LLM Conversation (greetings, help, explanations)
+
+Both pipelines maintain per-conversation memory for follow-up context.
 ```
 
 ### System Diagram
 
 ```mermaid
 graph LR
-    A[React Frontend] -->|HTTP| B[FastAPI Backend]
-    B --> C[SQLTranslator]
+    A[React Frontend] -->|HTTP + conversation_id| B[FastAPI Backend]
+    B --> R[QueryRouter]
+    R -->|Data Query| C[SQLTranslator]
+    R -->|General Query| L[LLM Conversation]
     C -->|SQL| D[SQLExecutor]
     D -->|DataFrame| E[InsightEngine]
     E -->|Signals| F[Hypothesis Scorer]
     F -->|Top Hypotheses| G[Insight Generator]
     G --> H[JSON Response]
+    L --> H
 
     subgraph "Data Layer"
         I[DataManager / DuckDB]
     end
     D -.-> I
     C -.-> I
+
+    subgraph "Memory"
+        M[Conversation History ×50 turns]
+    end
+    C -.-> M
+    L -.-> M
 ```
 
 ---
@@ -49,7 +64,7 @@ graph LR
 ### 2. Backend Setup
 
 ```bash
-cd shinchan.ai.v2/backend
+cd payflow.ai.v2/backend
 
 # Create virtual environment
 python -m venv venv
@@ -67,33 +82,24 @@ cp .env.example .env
 ### 3. Frontend Setup
 
 ```bash
-cd shinchan.ai.v2/frontend
+cd payflow.ai.v2/frontend
 
 # Install dependencies
 npm install
 ```
 
-### 4. Generate Dataset (if needed)
-
-```bash
-# From the project root
-python generate_dataset.py
-```
-
-This creates `250k_transactions.csv` with 250,000 realistic synthetic transactions.
-
-### 5. Run the Application
+### 4. Run the Application
 
 **Start the backend (Terminal 1):**
 ```bash
-cd shinchan.ai.v2/backend
+cd payflow.ai.v2/backend
 python run.py
 ```
 Backend runs at `http://localhost:8000` — API docs at `http://localhost:8000/docs`
 
 **Start the frontend (Terminal 2):**
 ```bash
-cd shinchan.ai.v2/frontend
+cd payflow.ai.v2/frontend
 npm run dev
 ```
 Frontend runs at `http://localhost:5173` — API calls are proxied to the backend.
@@ -103,15 +109,15 @@ Frontend runs at `http://localhost:5173` — API calls are proxied to the backen
 ## Project Structure
 
 ```
-shinchan.ai/
-├── shinchan.ai.v2/
+payflow.ai/
+├── payflow.ai.v2/
 │   ├── backend/
 │   │   ├── run.py                          # Server entry point (uvicorn)
 │   │   ├── requirements.txt                # Python dependencies
 │   │   ├── .env                            # Environment variables
 │   │   ├── .env.example                    # Env template
 │   │   ├── data/
-│   │   │   ├── 250k_transactions.csv       # Dataset
+│   │   │   ├── upi_transactions_2024.csv    # UPI transaction dataset
 │   │   │   └── hypotheses.json             # Business hypothesis library
 │   │   └── app/
 │   │       ├── main.py                     # FastAPI app instance
@@ -127,6 +133,7 @@ shinchan.ai/
 │   │       │   └── response.py             # Response schemas
 │   │       └── services/
 │   │           ├── engine.py               # Pipeline orchestrator
+│   │           ├── router.py               # Query classifier (data vs general)
 │   │           ├── translator.py           # NL → SQL (Groq/Llama 3.3)
 │   │           ├── executor.py             # SQL execution engine
 │   │           ├── analytics.py            # Signal extraction & insights
@@ -205,7 +212,7 @@ shinchan.ai/
 |----------|-------------|---------|
 | `GROQ_API_KEY` | Groq API key (required) | — |
 | `GROQ_MODEL` | LLM model name | `llama-3.3-70b-versatile` |
-| `DATA_PATH` | Path to transaction CSV | `./data/250k_transactions.csv` |
+| `DATA_PATH` | Path to transaction CSV | `./data/upi_transactions_2024.csv` |
 | `HYPOTHESIS_PATH` | Path to hypotheses JSON | `./data/hypotheses.json` |
 
 ---
@@ -214,6 +221,8 @@ shinchan.ai/
 
 ### Chat Interface
 - Multi-conversation support with sidebar history
+- **Conversational memory** — up to 50 turns of follow-up context per conversation
+- **Intelligent query routing** — automatically detects whether a query needs data analysis or is a general conversation
 - Auto-generated conversation titles from first message
 - LocalStorage persistence across sessions
 - Create, switch, and delete conversations
@@ -225,6 +234,14 @@ shinchan.ai/
 - Signal extraction from query results
 - Hypothesis-driven pattern matching
 - AI-generated natural language insights
+- Automatic CSV column normalization (handles mismatched headers)
+
+### Query Router
+- Classifies queries as **data** (analytics) or **general** (conversational)
+- Fast keyword heuristics for common patterns (zero-latency)
+- LLM-based fallback classification for ambiguous queries
+- General queries get friendly, context-aware responses
+- Data queries go through the full NL → SQL → Insight pipeline
 
 ### Design
 - Dark theme (`#1F2023` containers, `#4a4a4c` borders)
@@ -260,11 +277,21 @@ shinchan.ai/
 
 ## Sample Queries
 
+### Data Queries
 - "What is the average transaction amount for bill payments?"
 - "How do failure rates compare between Android and iOS?"
 - "What are the peak transaction hours for food delivery?"
 - "Which banks have the highest fraud flag rates?"
 - "Which sender banks have the highest failure rates for bill payments over ₹1,000 during weekends?"
+
+### Follow-up Queries (Conversational Memory)
+- "What's the failure rate for P2P transactions?" → "Break that down by state" → "Show me only the top 5"
+
+### General Conversation
+- "Hey, who are you?"
+- "What can you do?"
+- "Thanks for the help!"
+- "How does the analytics pipeline work?"
 
 ---
 
