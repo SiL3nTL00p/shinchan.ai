@@ -307,6 +307,3 @@ payflow.ai/
 
 ---
 
-## License
-
-MIT
