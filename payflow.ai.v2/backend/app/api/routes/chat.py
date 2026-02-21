@@ -21,8 +21,10 @@ async def process_query(
     Optionally scoped to a conversation_id for multi-conversation support.
     """
     try:
+        # Change to:
+        enhanced_query = request.query + " When the answer involves multiple data points, categories, or comparisons, present the data as a markdown table with each row on a NEW LINE using | column | syntax. For simple or single-value answers, respond in plain text."
         result = engine.process_query(
-            request.query, conversation_id=request.conversation_id
+        enhanced_query, conversation_id=request.conversation_id
         )
         return QueryResponse(**result)
     except Exception as e:

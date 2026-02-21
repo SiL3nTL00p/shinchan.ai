@@ -72,6 +72,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
                         key={message.id}
                         message={message}
                         isLatest={index === messages.length - 1 && message.role === "assistant"}
+                        isLoading={isLoading}
                     />
                 ))}
             </AnimatePresence>

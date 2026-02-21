@@ -1,6 +1,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import ReactMarkdown from "react-markdown"
 
 export interface Message {
     id: string;
@@ -13,9 +14,10 @@ export interface Message {
 interface ChatMessageProps {
     message: Message;
     isLatest?: boolean;
+    isLoading?: boolean;
 }
 
-export const ChatMessage: React.FC<ChatMessageProps> = ({ message, isLatest = false }) => {
+export const ChatMessage: React.FC<ChatMessageProps> = ({ message, isLatest = false, isLoading = false }) => {
     const isUser = message.role === "user";
 
     return (
@@ -58,9 +60,57 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, isLatest = fa
                         : "bg-[#2D2D2D]/70 text-white"
                 )}
             >
-                <div className="text-[15px] leading-relaxed whitespace-pre-wrap break-words">
-                    {message.content}
+                <div className="text-[15px] leading-relaxed break-words">
+    {(() => {
+        const lines = message.content.split('\n');
+        const result: React.ReactElement[] = [];
+        let tableRows: string[][] = [];
+
+        const flushTable = (key: string) => {
+            if (tableRows.length === 0) return;
+            result.push(
+                <div key={key} className="overflow-x-auto my-3 rounded-lg border border-[#444]">
+                    <table className="border-collapse text-sm w-full">
+                        <thead>
+                            <tr>
+                                {tableRows[0].map((cell, j) => (
+                                    <th key={j} className="border border-[#555] bg-[#2a2a2a] px-4 py-2 text-left font-semibold text-white/90">
+                                        {cell}
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {tableRows.slice(1).map((row, i) => (
+                                <tr key={i} className={i % 2 === 0 ? "bg-[#1e1e1e]" : "bg-[#252525]"}>
+                                    {row.map((cell, j) => (
+                                        <td key={j} className="border border-[#444] px-4 py-2 text-white/80">
+                                            {cell}
+                                        </td>
+                                    ))}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
+            );
+            tableRows = [];
+        };
+
+        lines.forEach((line, i) => {
+            if (line.trim().startsWith('|')) {
+                if (line.match(/^\|[\s\-|]+\|?$/)) return;
+                const cells = line.split('|').filter(c => c.trim() !== '').map(c => c.trim());
+                tableRows.push(cells);
+            } else {
+                flushTable(`table-${i}`);
+                if (line.trim()) result.push(<p key={i} className="mb-1 whitespace-pre-wrap">{line}</p>);
+            }
+        });
+        flushTable('table-end');
+        return result;
+    })()}
+</div>
 
                 {/* Timestamp */}
                 <div className="text-[11px] mt-1.5 opacity-50 text-white">
@@ -70,31 +120,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, isLatest = fa
                     })}
                 </div>
 
-                {/* Typing dots — iMessage style */}
-                {!isUser && isLatest && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="flex gap-1.5 mt-1.5"
-                    >
-                        {[0, 1, 2].map((i) => (
-                            <motion.div
-                                key={i}
-                                animate={{
-                                    opacity: [0.3, 0.7, 0.3],
-                                    scale: [0.85, 1.1, 0.85],
-                                }}
-                                transition={{
-                                    duration: 1.4,
-                                    repeat: Infinity,
-                                    delay: i * 0.25,
-                                    ease: "easeInOut",
-                                }}
-                                className="w-[9px] h-[9px] rounded-full bg-[#8E8E93]"
-                            />
-                        ))}
-                    </motion.div>
-                )}
+                
             </div>
 
             {/* Avatar — User only */}

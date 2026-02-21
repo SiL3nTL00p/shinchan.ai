@@ -98,6 +98,8 @@ class InsightXEngine:
                     "capabilities. Keep responses concise but friendly.\n\n"
                     "If the user seems to want data analysis but phrased it casually, "
                     "guide them toward asking a data question."
+                    "give the response in tabular format only if the user quesry is explicitly asking for a table. Do not collapse rows onto a single line." 
+                    "If the response contains tabular data, always format it as a markdown table using | column | syntax."
                 ),
             }
         ]
